@@ -32,7 +32,7 @@ def normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
         raise DataValidationError("index must be a DatetimeIndex")
 
     out = df[OHLCV_COLUMNS].astype(float)
-    idx = out.index
+    idx = pd.DatetimeIndex(out.index)
     if idx.tz is not None:
         idx = idx.tz_convert("UTC").tz_localize(None)
     out.index = idx.rename("Date")
