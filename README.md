@@ -1,146 +1,133 @@
-# quantbt
+# AylinTrade
 
-**Config-driven backtests of classic quant trading strategies on equities, crypto and futures.**
+**A multi-market trend portfolio, reviewed every day by a committee of Claude agents, paper
+traded in public, with a live dashboard.**
 
 [![CI](https://github.com/aylinunel/aylintrade/actions/workflows/ci.yml/badge.svg)](https://github.com/aylinunel/aylintrade/actions/workflows/ci.yml)
+[![Daily](https://github.com/aylinunel/aylintrade/actions/workflows/daily.yml/badge.svg)](https://github.com/aylinunel/aylintrade/actions/workflows/daily.yml)
 ![Python](https://img.shields.io/badge/python-3.11%E2%80%933.13-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 
-`quantbt` re-implements nine strategies from
-[je-suis-tm/quant-trading](https://github.com/je-suis-tm/quant-trading), removes their look-ahead
-bias, and runs them all under **one set of rules**: identical execution timing, trading costs on
-every trade, and buy-and-hold over the same dates as the benchmark. That makes the results
-comparable across strategies and markets.
+**Dashboard:** https://aylinunel.github.io/aylintrade/ (after the one-time setup below)
 
-> Research only, not financial advice. Past performance, especially on one year of futures data,
-> says little about the future.
+> Research and paper trading with simulated money. Not financial advice.
 
-## Results
+## What it does
 
-After costs, **6 of 48 strategy-market tests beat simply holding the asset** on Sharpe ratio
-(return per unit of risk). Full tables are in [`results/latest/summary.md`](results/latest/summary.md).
+Every weekday after the US close, a GitHub Action:
 
-| Market | Data | Buy & hold Sharpe | Buy & hold / yr | Best strategy | Sharpe | Per yr | Trades |
-|---|---|---:|---:|---|---:|---:|---:|
-| S&P 500 ETF (SPY) | 1995–2026 | 0.66 | 11.2% | MACD oscillator | 0.52 | 5.5% | 185 |
-| Bitcoin (BTC/USDT) | 2017–2026 | 0.82 | 38.3% | MACD oscillator | 0.95 | 39.8% | 85 |
-| Ethereum (ETH/USDT) | 2017–2026 | 0.71 | 26.1% | MACD oscillator | 0.95 | 48.9% | 85 |
-| S&P 500 E-mini (ES) | 2025–2026 | 1.02 | 19.0% | MACD oscillator | 1.74 | 17.9% | 6 |
-| Gold (GC) | 2025–2026 | 1.65 | 55.6% | Parabolic SAR | 1.01 | 21.6% | 12 |
-| Crude oil (CL) | 2025–2026 | 1.26 | 69.8% | Heikin-Ashi | 2.12 | 22.2% | 8 |
+1. downloads fresh prices for eight markets: US stocks (SPY, QQQ, IWM), developed-market stocks
+   (EFA), gold (GLD), long US Treasuries (TLT), Bitcoin and Ethereum;
+2. **runs the algorithm**, which decides how much of each to hold;
+3. **convenes the agent committee** (market analyst, news analyst with web search, bull and
+   bear researchers, risk manager, portfolio manager), which may trim positions it has specific
+   reasons to distrust;
+4. **trades the paper account** ($100,000 of simulated money) and commits the record to `paper/`;
+5. re-runs the 20-year backtest and **publishes the dashboard**.
 
-* Nothing beat holding SPY over 31 years.
-* The MACD trend filter is the only consistent winner, on crypto, and most of that edge came
-  before 2022 (see `results/latest/robustness.csv`).
-* High-turnover intraday strategies (Dual Thrust, London Breakout) lose to trading costs.
-* The futures rows rest on a handful of trades over about a year: treat them as anecdotes.
+## The algorithm
 
-![Sharpe ratio minus buy & hold, every strategy on every market](results/latest/charts/heatmap_sharpe_vs_hold.png)
+Four steps, all in [`algorithm.py`](src/aylintrade/algorithm.py):
 
-![Bitcoin: growth of $1 after costs](results/latest/charts/equity_BTC.png)
+1. **Trend:** eight votes per market (price above its 1, 3, 6 and 12-month average; positive
+   return over each). A quarter of each position is always held; the votes decide the rest.
+2. **Risk parity:** size each market by 1 / its volatility, so bonds and Bitcoin carry similar
+   risk.
+3. **Volatility target:** scale the whole portfolio to about 10% expected volatility a year,
+   never more than 100% invested.
+4. **Rebalance band:** skip trades under 3% of the account, to save costs.
+
+## Results (2006 to October 2026, after trading costs)
+
+| Portfolio | Per year | Volatility | Sharpe | Worst drop |
+|---|---:|---:|---:|---:|
+| **Aylin trend portfolio** | **8.4%** | **9.5%** | **0.89** | **−22%** |
+| S&P 500 (SPY) buy & hold | 11.0% | 19.0% | 0.64 | −55% |
+| Equal-weight buy & hold | 13.2% | 17.6% | 0.79 | −40% |
+| Risk parity, always invested | 8.4% | 9.9% | 0.87 | −24% |
+
+Read honestly:
+
+* It earns **less per year than the S&P 500**, with **half the volatility** and **less than
+  half the worst loss**. The goal is a portfolio you can stick with, not one that beats the
+  index on raw return.
+* **Most of the improvement comes from diversification and risk-based sizing.** The always-
+  invested risk-parity benchmark scores almost the same; the trend tilt adds a little, mostly in
+  long bear markets (2008: −6% against −15% for risk parity and −37% for SPY). It did not help
+  in 2022, when stocks and bonds fell together (−17%).
+* It holds up under 2–3× trading costs, other settings, without crypto, and in each third of
+  the period. Every variant tried while designing it is in the stress-test table, losers
+  included: [`results/latest/summary.md`](results/latest/summary.md).
+
+The agent committee is **not** in these numbers: a language model knows how history turned
+out, so it cannot be backtested honestly. Its effect is measured forward in the paper account,
+and shown on the dashboard.
 
 ## Quick start
 
 ```bash
 git clone https://github.com/aylinunel/aylintrade && cd aylintrade
-pip install -e ".[plot]"        # Python 3.11+
+pip install -e ".[agents]"      # Python 3.11+
 
-quantbt list                    # strategies, data sources, markets
-quantbt fetch                   # download data into data/ (~200 MB, cached)
-quantbt run -j 4 --charts       # backtest everything; results in results/latest/
-quantbt robustness              # parameter, cost and sub-period checks
+aylintrade fetch                # download prices into data/ (~200 MB, cached)
+aylintrade backtest             # the 20-year study -> results/latest/
+aylintrade daily                # one paper trading day, as the GitHub Action does
+make preview                    # dashboard at http://localhost:8000
 ```
 
-Run a subset:
+`aylintrade daily` uses the agents when `ANTHROPIC_API_KEY` is set and trades on the algorithm
+alone when it is not (or with `--no-agents`).
 
-```bash
-quantbt run -m BTC ETH -s buy_and_hold macd pair_trading -o results/crypto
-```
+## One-time setup on GitHub
 
-No API keys are needed: all data comes from free datasets hosted on GitHub.
+1. **Settings → Pages → Source: GitHub Actions.**
+2. **Settings → Secrets and variables → Actions → New repository secret:**
+   `ANTHROPIC_API_KEY` (from https://console.anthropic.com). Without it the account trades on
+   the algorithm alone. The committee costs a few dollars a month.
+3. **Actions → Daily → Run workflow** to start the paper account today. After that it runs by
+   itself at 06:17 UTC, Tuesday to Saturday.
 
-## Strategies
+## The agents' limits
 
-| Id | Kind | Rule |
-|---|---|---|
-| `buy_and_hold` | position | Benchmark: always fully invested |
-| `macd` | position | Long while the 10-day average is at or above the 21-day average |
-| `parabolic_sar` | position | Long while the SAR is below the price |
-| `heikin_ashi` | position | Scales into up to 3 longs on Heikin-Ashi candle signals |
-| `bollinger_w` | position | Long on a double-bottom breakout, exit on band contraction |
-| `rsi_head_shoulders` | position | Short a head-and-shoulders top, cover on an RSI rebound |
-| `shooting_star` | position | Short after a confirmed shooting star, ±5% stop or 7 days |
-| `dual_thrust` | intraday | Breakout from the open, flat at the close (daily bars) |
-| `london_breakout` | intraday | Break of the 07:00 UTC hour's range at the London open (hourly bars) |
-| `pair_trading` | pair | Trades the z-score of a cointegrated spread, market-neutral |
+From [`agents.py`](src/aylintrade/agents.py), enforced by plain code after the models answer:
 
-The original repo's options straddle is not included: it needs historical option prices, which
-are not freely available.
+* They can only **reduce** a position, by at most **50%** (`agents.max_cut`). Never open, add
+  or short.
+* A missing or unreadable decision keeps the algorithm's weight.
+* If the API fails, the algorithm trades alone that day.
+* Every decision is logged in `paper/decisions.csv` and scored five trading days later; the
+  portfolio manager reads those scores before each meeting.
 
-## How it works
+## Project layout
 
-```mermaid
-flowchart LR
-    Y[configs/*.yaml] --> C[Config]
-    C --> F[quantbt fetch]
-    F -->|data sources| S[(data/*.parquet)]
-    S --> P[pipeline]
-    C --> P
-    P -->|per market, in parallel| E[engine: timing + costs]
-    R[strategy registry] --> E
-    E --> M[metrics vs buy & hold]
-    M --> O[results/: CSV, Markdown, charts]
-```
-
-| Package | Responsibility |
+| Path | What it is |
 |---|---|
-| `quantbt.config` | Typed, validated YAML config: markets, costs, strategy parameters |
-| `quantbt.data` | OHLCV schema, pluggable sources (`@register_source`), Parquet cache |
-| `quantbt.strategies` | Strategy interfaces (position / intraday / pair) and the registry (`@register`) |
-| `quantbt.engine` | Execution timing, cost model, performance metrics |
-| `quantbt.pipeline` | Runs every strategy on every market, in parallel processes |
-| `quantbt.robustness` | Parameter grids, cost multipliers, sub-period splits |
-| `quantbt.reporting` | CSV, Markdown summary and PNG charts |
-
-**Rules every strategy shares** (details in [docs/methodology.md](docs/methodology.md)):
-
-* A signal formed at a bar's close trades from the next bar, so nothing sees the future. The
-  test suite enforces this for every strategy by re-running it on truncated and shocked data.
-* Each change in position pays a cost per side: 0.05% (SPY), 0.10% (crypto), 0.03–0.05% (futures).
-* Full capital per strategy (pair trading: half per leg). Idle cash earns nothing; shorts pay no
-  borrow fee.
-
-## Scaling up
-
-* **New market:** add a block under `markets:` in a config. Any local CSV works through the
-  `csv` source.
-* **New strategy:** one file with a dataclass and `@register`; it then works in configs, the
-  CLI, tests and reports.
-* **New data vendor:** subclass `DataSource` and decorate with `@register_source("name")`.
-* **More compute:** `-j N` runs markets in parallel; the `Backtest` GitHub Action runs the full
-  study on fresh data and uploads the results.
-
-Step-by-step examples are in [docs/extending.md](docs/extending.md).
+| `configs/default.yaml` | Markets, algorithm settings, agent models and limits, paper capital |
+| `src/aylintrade/algorithm.py` | The four steps, and the simulator shared by backtest and paper account |
+| `src/aylintrade/research.py` | Backtest, benchmarks, per-market tests, stress tests |
+| `src/aylintrade/agents.py` | The committee and its guard |
+| `src/aylintrade/paper.py` | The paper account |
+| `src/aylintrade/data/` | Price sources (free datasets on GitHub, no keys) and the local cache |
+| `site/index.html` | The dashboard (one file, plain SVG charts); `aylintrade site` builds its data |
+| `paper/` | The paper account's history, committed daily |
+| `docs/methodology.md` | Every rule, and the known limitations |
+| `docs/research-notes.md` | What was taken from each reference project, and why |
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-make lint      # ruff + mypy
-make test      # 66 offline tests, ~90% coverage
+make lint test     # ruff, mypy, and offline tests (the agents run against a fake client)
 ```
 
-CI runs lint, types and tests on Python 3.11–3.13 for every push and pull request.
+## Data
 
-## Data sources
-
-| Market | Source | Coverage |
+| Markets | Source | From |
 |---|---|---|
-| SPY, DIA | [Johnbrick123/sp500-data](https://github.com/Johnbrick123/sp500-data), dividend-adjusted | 1995 → today |
-| BTC, ETH | [finom/static-klines](https://github.com/finom/static-klines) (Binance) | daily 2017 →, hourly 2022 → |
-| ES, NQ, GC, CL | [axb0306/cme-futures-ohlc](https://github.com/axb0306/cme-futures-ohlc) | about one year |
+| SPY, QQQ, IWM, EFA, GLD, TLT | [Johnbrick123/sp500-data](https://github.com/Johnbrick123/sp500-data), dividend-adjusted | 1999–2004, by fund |
+| BTC, ETH | [finom/static-klines](https://github.com/finom/static-klines) (Binance) | 2017 |
+| ES, GC, CL futures | [axb0306/cme-futures-ohlc](https://github.com/axb0306/cme-futures-ohlc) | 2025; too short to test yet |
 
 ## License
 
-Apache-2.0. Strategy logic is adapted from je-suis-tm/quant-trading (Apache-2.0); see
-[NOTICE](NOTICE).
+Apache-2.0. See [NOTICE](NOTICE) for the projects this builds on.

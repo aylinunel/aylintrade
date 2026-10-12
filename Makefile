@@ -1,6 +1,6 @@
-.PHONY: install lint test fetch run robustness charts all
+.PHONY: install lint test fetch backtest daily site preview
 
-install:      ## editable install with dev tools
+install:      ## editable install with dev tools and the agents
 	pip install -e ".[dev]"
 
 lint:         ## style, formatting and types
@@ -8,16 +8,20 @@ lint:         ## style, formatting and types
 	ruff format --check src tests
 	mypy
 
-test:         ## unit + end-to-end tests (offline)
+test:         ## all tests, offline (the agents run against a fake client)
 	pytest --cov
 
 fetch:        ## download market data into data/
-	quantbt fetch
+	aylintrade fetch
 
-run:          ## backtest everything, 4 markets in parallel, with charts
-	quantbt run -j 4 --charts
+backtest:     ## the 20-year study -> results/latest/
+	aylintrade backtest
 
-robustness:   ## parameter / cost / sub-period checks
-	quantbt robustness
+daily:        ## what the GitHub Action runs: fetch, backtest, one paper day, site data
+	aylintrade daily
 
-all: fetch run robustness
+site:         ## rebuild site/data.json from results/ and paper/
+	aylintrade site
+
+preview: site ## open the dashboard at http://localhost:8000
+	cd site && python -m http.server 8000

@@ -3,8 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from quantbt.config import MarketConfig, SourceSpec
-from quantbt.data import (
+from aylintrade.config import MarketConfig, SourceSpec
+from aylintrade.data import (
     DataSourceError,
     DataStore,
     DataValidationError,
@@ -13,7 +13,7 @@ from quantbt.data import (
     get_source,
     normalize_ohlcv,
 )
-from quantbt.data.sources import parse_cme_csv, parse_klines
+from aylintrade.data.sources import parse_cme_csv, parse_klines
 
 
 def test_built_in_sources() -> None:
@@ -64,7 +64,6 @@ def test_csv_source_and_store_round_trip(tmp_path, daily: pd.DataFrame) -> None:
         id="XYZ",
         label="XYZ",
         group="",
-        periods_per_year=252,
         cost_per_side=0.0,
         data={"1d": SourceSpec("csv", {"path": str(tmp_path / "{symbol}_{interval}.csv")})},
     )
@@ -77,7 +76,7 @@ def test_csv_source_and_store_round_trip(tmp_path, daily: pd.DataFrame) -> None:
 
 
 def test_binance_source_skips_missing_files(monkeypatch) -> None:
-    from quantbt.data import sources
+    from aylintrade.data import sources
 
     def fake_get(url: str, timeout: float = 60.0) -> bytes:
         if url.endswith("2018-01-01.json"):
@@ -90,7 +89,7 @@ def test_binance_source_skips_missing_files(monkeypatch) -> None:
 
 
 def test_cme_source_picks_newest_matching_file(monkeypatch) -> None:
-    from quantbt.data import sources
+    from aylintrade.data import sources
 
     src = get_source("cme_futures_ohlc")
     files = [

@@ -40,19 +40,18 @@ def daily() -> pd.DataFrame:
     return make_bars(500, seed=1)
 
 
-@pytest.fixture(scope="session")
-def hourly() -> pd.DataFrame:
-    return make_bars(24 * 120, freq="h", seed=2, vol=0.006)
+def make_prices(n: int = 900, seed: int = 4) -> pd.DataFrame:
+    """Business-day closes for three markets: a steady riser, a choppy one, a crash-then-recover."""
+    rng = np.random.default_rng(seed)
+    idx = pd.bdate_range("2018-01-01", periods=n)
+    up = 100 * np.exp(np.cumsum(rng.normal(0.0006, 0.01, n)))
+    chop = 50 * np.exp(np.cumsum(rng.normal(0.0, 0.02, n)))
+    crash = 20 * np.exp(
+        np.cumsum(np.r_[rng.normal(-0.002, 0.03, n // 2), rng.normal(0.002, 0.03, n - n // 2)])
+    )
+    return pd.DataFrame({"SPY": up, "AAA": chop, "BBB": crash}, index=idx)
 
 
 @pytest.fixture(scope="session")
-def cointegrated_pair() -> tuple[pd.Series, pd.Series]:
-    """Two series sharing a random-walk trend plus a mean-reverting spread."""
-    rng = np.random.default_rng(3)
-    n = 400
-    trend = 100 + np.cumsum(rng.normal(0, 1, n))
-    spread = np.zeros(n)
-    for i in range(1, n):
-        spread[i] = 0.8 * spread[i - 1] + rng.normal(0, 1)
-    idx = pd.date_range("2020-01-01", periods=n, freq="D")
-    return pd.Series(trend, idx), pd.Series(0.9 * trend + 10 + spread, idx)
+def prices() -> pd.DataFrame:
+    return make_prices()
