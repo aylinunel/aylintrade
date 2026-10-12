@@ -34,8 +34,8 @@ def heikin_ashi(bars: pd.DataFrame) -> pd.DataFrame:
     ha_open[0] = o[0]
     for i in range(1, len(ha_close)):
         ha_open[i] = (ha_open[i - 1] + ha_close[i - 1]) / 2
-    ha_high = np.maximum.reduce([ha_open, ha_close, l, h])
-    ha_low = np.minimum.reduce([ha_open, ha_close, l, h])
+    stacked = np.vstack([ha_open, ha_close, l, h])
+    ha_high, ha_low = stacked.max(axis=0), stacked.min(axis=0)
     return pd.DataFrame(
         {"open": ha_open, "high": ha_high, "low": ha_low, "close": ha_close}, index=bars.index
     )

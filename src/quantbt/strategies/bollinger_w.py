@@ -42,7 +42,7 @@ class BollingerW(PositionStrategy):
         bb = bollinger_bands(close, self.window, self.num_std)
         width = (bb["upper"] - bb["lower"]) / bb["mid"]
         width_avg = width.rolling(self.lookback).mean().to_numpy()
-        width = width.to_numpy()
+        width_now = width.to_numpy()
         p, mid, up, lo = (
             close.to_numpy(),
             bb["mid"].to_numpy(),
@@ -78,7 +78,7 @@ class BollingerW(PositionStrategy):
                         for m in range(i, j, -1)  # type: ignore[arg-type]
                     )
                     holding = entered
-            if holding and not entered and width[i] < width_avg[i]:
+            if holding and not entered and width_now[i] < width_avg[i]:
                 holding = False
             pos[i] = 1.0 if holding else 0.0
         return pd.Series(pos, index=bars.index)

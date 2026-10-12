@@ -156,7 +156,14 @@ def _results_frame(chunks: Iterable[list[dict[str, Any]]]) -> pd.DataFrame:
 
 def _curves_frame(items: Iterable[tuple[str, dict[str, pd.Series]]]) -> pd.DataFrame:
     frames = [
-        pd.DataFrame({"market": mid, "strategy": sid, "week": s.index.date, "equity": s.to_numpy()})
+        pd.DataFrame(
+            {
+                "market": mid,
+                "strategy": sid,
+                "week": pd.DatetimeIndex(s.index).date,
+                "equity": s.to_numpy(),
+            }
+        )
         for mid, curves in items
         for sid, s in curves.items()
     ]

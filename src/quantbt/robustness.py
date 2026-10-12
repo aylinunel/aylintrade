@@ -76,8 +76,8 @@ def check(config: Config, spec: RobustnessConfig) -> tuple[pd.DataFrame, pd.Data
 
         yearly = pd.DataFrame(
             {
-                "strategy_return": (1 + base).groupby(base.index.year).prod() - 1,
-                "bh_return": (1 + bh).groupby(bh.index.year).prod() - 1,
+                "strategy_return": (1 + base).groupby(pd.DatetimeIndex(base.index).year).prod() - 1,
+                "bh_return": (1 + bh).groupby(pd.DatetimeIndex(bh.index).year).prod() - 1,
             }
         )
         years.append(yearly.rename_axis("year").reset_index().assign(market=mid, strategy=sid))

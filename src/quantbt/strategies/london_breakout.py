@@ -36,8 +36,8 @@ class LondonBreakout(IntradayStrategy):
 
     def trades(self, bars: pd.DataFrame) -> pd.DataFrame:
         rows = []
-        for day, g in bars.groupby(bars.index.normalize()):
-            hours = g.index.hour
+        for day, g in bars.groupby(pd.DatetimeIndex(bars.index).normalize()):
+            hours = pd.DatetimeIndex(g.index).hour
             rng, entry_bar = g[hours == self.range_hour], g[hours == self.entry_hour]
             if rng.empty or entry_bar.empty:
                 continue

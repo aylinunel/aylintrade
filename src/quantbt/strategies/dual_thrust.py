@@ -9,6 +9,8 @@ import pandas as pd
 
 from .base import TRADE_COLUMNS, IntradayStrategy, register
 
+Trade = tuple[pd.Timestamp, int, float, float]
+
 
 @register
 @dataclass(frozen=True)
@@ -41,18 +43,25 @@ class DualThrust(IntradayStrategy):
         upper = bars["Open"] + self.k * rng
         lower = bars["Open"] - (1 - self.k) * rng
 
-        rows: list[tuple[pd.Timestamp, int, float, float]] = []
-        for day, r, up, lo in zip(bars.index, bars.itertuples(), upper, lower, strict=True):
+        high, low, close = (bars[k].to_numpy(float) for k in ("High", "Low", "Close"))
+        ups, los = upper.to_numpy(float), lower.to_numpy(float)
+
+        def pnl(seq: list[Trade]) -> float:
+            return sum(side * (exit_ / entry - 1) for _, side, entry, exit_ in seq)
+
+        rows: list[Trade] = []
+        for i, day in enumerate(pd.DatetimeIndex(bars.index)):
+            up, lo, c = float(ups[i]), float(los[i]), float(close[i])
             if not np.isfinite(up) or up <= lo:
                 continue
-            broke_up, broke_down = r.High > up, r.Low < lo
+            broke_up, broke_down = high[i] > up, low[i] < lo
             if broke_up and broke_down:
-                long_first = [(day, 1, up, lo), (day, -1, lo, r.Close)]
-                short_first = [(day, -1, lo, up), (day, 1, up, r.Close)]
-                pnl = lambda seq: sum(s * (x / e - 1) for _, s, e, x in seq)  # noqa: E731
-                rows += min(long_first, short_first, key=pnl)
+                long_first: list[Trade] = [(day, 1, up, lo), (day, -1, lo, c)]
+                short_first: list[Trade] = [(day, -1, lo, up), (day, 1, up, c)]
+                # worse of the two possible intraday orders (ties keep long-first)
+                rows += long_first if pnl(long_first) <= pnl(short_first) else short_first
             elif broke_up:
-                rows.append((day, 1, up, r.Close))
+                rows.append((day, 1, up, c))
             elif broke_down:
-                rows.append((day, -1, lo, r.Close))
+                rows.append((day, -1, lo, c))
         return pd.DataFrame(rows, columns=TRADE_COLUMNS)
