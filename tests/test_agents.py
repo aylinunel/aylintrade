@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from aylintrade.agents import REVIEW, apply_review, market_facts, review
+from aylintrade.agents import REVIEW, _unique, apply_review, market_facts, review
 from aylintrade.config import AgentsConfig, AlgorithmConfig
 
 
@@ -80,7 +80,19 @@ def test_committee_runs_every_role(facts: list[dict[str, Any]]) -> None:
     assert manager["model"] == cfg.manager_model and "a lesson" in manager["messages"][0]["content"]
     assert rv.decisions["SPY"]["reason"] == "trend intact"
     assert rv.sources == [{"title": "Fed minutes", "url": "https://example.com/fed"}]
+    assert rv.run_at and rv.input_hash and rv.configuration["mode"] == "commentary_shadow"
     assert set(rv.reports) == {"market", "news", "debate", "risk"}
+
+
+def test_citation_filter_excludes_unsafe_urls() -> None:
+    sources = _unique(
+        [
+            {"title": "good", "url": "https://example.com/research"},
+            {"title": "bad", "url": "javascript:alert(1)"},
+            {"title": "local", "url": "file:///tmp/x"},
+        ]
+    )
+    assert sources == [{"title": "good", "url": "https://example.com/research"}]
 
 
 def test_no_news_search_when_disabled(facts: list[dict[str, Any]]) -> None:

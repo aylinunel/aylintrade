@@ -36,10 +36,13 @@ DECISION_COLUMNS = [
     "status",
     "target",
     "final",
+    "shadow_final",
+    "mode",
     "close",
     "reason",
     "return_5d",
     "effect",
+    "shadow_effect",
 ]
 
 
@@ -56,6 +59,12 @@ def settle(decisions: pd.DataFrame, px: pd.DataFrame) -> pd.DataFrame:
     (final - target) x the market's return. Positive means the cut helped.
     """
     d = decisions.copy()
+    if "shadow_final" not in d:
+        d["shadow_final"] = d.get("final")
+    if "mode" not in d:
+        d["mode"] = "capped_trim"
+    if "shadow_effect" not in d:
+        d["shadow_effect"] = None
     for i, row in d[d["return_5d"].isna()].iterrows():
         series = px[row["market"]].dropna() if row["market"] in px else pd.Series(dtype=float)
         after = series[series.index > pd.Timestamp(row["date"])]
@@ -63,6 +72,7 @@ def settle(decisions: pd.DataFrame, px: pd.DataFrame) -> pd.DataFrame:
             ret = after.iloc[SETTLE_DAYS - 1] / row["close"] - 1
             d.loc[i, "return_5d"] = round(float(ret), 5)
             d.loc[i, "effect"] = round(float((row["final"] - row["target"]) * ret), 6)
+            d.loc[i, "shadow_effect"] = round(float((row["shadow_final"] - row["target"]) * ret), 6)
     return d
 
 
@@ -71,17 +81,20 @@ def lessons(decisions: pd.DataFrame, n: int = 10) -> list[str]:
     done = decisions[decisions["return_5d"].notna()]
     if done.empty:
         return []
-    cuts = done[done["final"] < done["target"]].tail(n)
+    final_column = "shadow_final" if "shadow_final" in done else "final"
+    effect_column = "shadow_effect" if "shadow_effect" in done else "effect"
+    cuts = done[done[final_column] < done["target"]].tail(n)
     out = [
-        f"{r['date']} {r['market']}: held {r['keep']:.0%} of target ({r['rating']}: "
-        f"{r['reason']}). Next {SETTLE_DAYS} days {r['return_5d']:+.1%}; the cut "
-        f"{'helped' if r['effect'] > 0 else 'cost'} {abs(r['effect']):.2%} of the portfolio."
+        f"{r['date']} {r['market']}: hypothetically held {r['keep']:.0%} of target "
+        f"({r['rating']}: {r['reason']}). Next {SETTLE_DAYS} days {r['return_5d']:+.1%}; "
+        f"the shadow cut {'helped' if r[effect_column] > 0 else 'cost'} "
+        f"{abs(r[effect_column]):.2%} of the portfolio."
         for r in cuts.to_dict("records")
     ]
-    total = done["effect"].sum()
+    total = done[effect_column].sum()
     out.append(
-        f"Overall: {len(done)} settled decisions, {len(done[done['final'] < done['target']])} "
-        f"cuts, net effect of all cuts {total:+.2%} of the portfolio."
+        f"Overall: {len(done)} settled decisions, {len(done[done[final_column] < done['target']])} "
+        f"shadow cuts, net hypothetical effect {total:+.2%} of the portfolio."
     )
     return out
 
@@ -110,11 +123,14 @@ def run_day(cfg: Config, px: pd.DataFrame, use_agents: bool = True, client: Any 
     facts = market_facts(px, cfg.algorithm, labels, target, current)
     agents_cfg = cfg.agents if use_agents else type(cfg.agents)(enabled=False)
     rev = review(facts, lessons(decisions), date, agents_cfg, client)
-    final, status = (
+    shadow_final, status = (
         apply_review(target, rev.decisions, cfg.agents.max_cut)
         if rev.status == "ok"
         else (target, {})
     )
+    # The committee can explain and counterfactually score a guarded trim, but never changes
+    # this release's deterministic paper-account weights.
+    final = target
     new = rebalance(final, current, cfg.algorithm.rebalance_band)
 
     trades, cash = [], state["cash"]
@@ -144,14 +160,17 @@ def run_day(cfg: Config, px: pd.DataFrame, use_agents: bool = True, client: Any 
                 "date": date,
                 "market": m,
                 "rating": rev.decisions.get(m, {}).get("rating", ""),
-                "keep": float(final[m] / target[m]),
+                "keep": float(shadow_final[m] / target[m]),
                 "status": status.get(m, ""),
                 "target": round(float(target[m]), 5),
                 "final": round(float(final[m]), 5),
+                "shadow_final": round(float(shadow_final[m]), 5),
+                "mode": cfg.agents.mode,
                 "close": float(close[m]),
                 "reason": rev.decisions.get(m, {}).get("reason", ""),
                 "return_5d": None,
                 "effect": None,
+                "shadow_effect": None,
             }
             for m in px.columns
             if target[m] > 0
@@ -182,9 +201,10 @@ def run_day(cfg: Config, px: pd.DataFrame, use_agents: bool = True, client: Any 
         "facts": facts,
         "target": target.round(5).to_dict(),
         "final": final.round(5).to_dict(),
+        "shadow_final": shadow_final.round(5).to_dict(),
         "held": new.round(5).to_dict(),
         "trades": trades,
-        "review": {**asdict(rev), "guard": status},
+        "review": {**asdict(rev), "guard": status, "mode": cfg.agents.mode},
     }
     (root / "latest.json").write_text(json.dumps(latest, indent=1, default=str))
     state.update(date=date, cash=cash, units={m: float(u) for m, u in units.items() if u})

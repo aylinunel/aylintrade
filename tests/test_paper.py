@@ -14,12 +14,17 @@ from aylintrade.site import build_site_data
 from tests.test_agents import FakeClient
 
 
-def make_cfg(tmp: Path):
+def make_cfg(tmp: Path, mode: str = "commentary_shadow"):
     markets = {
         m: {"label": m, "cost_per_side": 0.001, "data": {"1d": {"source": "csv"}}}
         for m in ("SPY", "AAA", "BBB")
     }
-    raw = {"markets": markets, "algorithm": {"start": "2018-01-01"}, "paper": {"capital": 1000}}
+    raw = {
+        "markets": markets,
+        "algorithm": {"start": "2018-01-01"},
+        "agents": {"mode": mode},
+        "paper": {"capital": 1000},
+    }
     return parse_config(raw, base_dir=tmp)
 
 
@@ -34,9 +39,10 @@ def test_paper_days(tmp_path: Path, prices: pd.DataFrame) -> None:
     assert state["date"] == str(prices.index[-7].date())
     assert ledger["equity"].iloc[-1] == pytest.approx(1000, rel=0.01)  # only costs so far
     latest = json.loads((paper / "latest.json").read_text())
-    # the agents ran (a fake client was given) and only cut SPY
+    # The agents ran and recorded a hypothetical cut, but cannot alter paper weights.
     assert latest["review"]["status"] == "ok"
-    assert latest["final"]["SPY"] == pytest.approx(0.6 * latest["target"]["SPY"], abs=1e-4)
+    assert latest["final"]["SPY"] == pytest.approx(latest["target"]["SPY"])
+    assert latest["shadow_final"]["SPY"] == pytest.approx(0.6 * latest["target"]["SPY"], abs=1e-4)
 
     # same data again: nothing happens
     assert run_day(cfg, prices.iloc[:-6], client=FakeClient([cut])) is False
@@ -51,10 +57,30 @@ def test_paper_days(tmp_path: Path, prices: pd.DataFrame) -> None:
     assert spy["effect"] == pytest.approx(
         (spy["final"] - spy["target"]) * spy["return_5d"], abs=1e-6
     )
+    assert spy["shadow_effect"] == pytest.approx(
+        (spy["shadow_final"] - spy["target"]) * spy["return_5d"], abs=1e-6
+    )
     assert len(pd.read_csv(paper / "ledger.csv")) == 7
 
     site = json.loads(build_site_data(cfg).read_text())
     assert site["paper"]["agents"]["settled"] >= 1 and len(site["paper"]["dates"]) == 7
+
+
+def test_commentary_shadow_keeps_the_paper_weight_unchanged(
+    tmp_path: Path, prices: pd.DataFrame
+) -> None:
+    cfg = make_cfg(tmp_path, mode="commentary_shadow")
+    cut = {"market": "SPY", "rating": "Underweight", "keep": 0.6, "reason": "event risk"}
+    assert run_day(cfg, prices.iloc[:-1], client=FakeClient([cut]))
+    latest = json.loads((cfg.paper_dir / "latest.json").read_text())
+    assert latest["review"]["mode"] == "commentary_shadow"
+    assert latest["final"]["SPY"] == pytest.approx(latest["target"]["SPY"])
+    assert latest["shadow_final"]["SPY"] == pytest.approx(0.6 * latest["target"]["SPY"], abs=1e-4)
+
+
+def test_config_rejects_agent_weight_override(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="commentary_shadow"):
+        make_cfg(tmp_path, mode="capped_trim")
 
 
 def test_settle_waits_for_five_days(prices: pd.DataFrame) -> None:

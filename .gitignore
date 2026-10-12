@@ -18,8 +18,12 @@ venv/
 coverage.xml
 htmlcov/
 
-# Dashboard data is built by `aylintrade site` and deployed, not committed
-/site/data.json
+# Reproducible static output is built in CI and deployed as an artifact, never committed
+/site/
+
+# Frontend dependencies and generated preview data
+/node_modules/
+/web/public/data.json
 
 # Results: only the published snapshot in results/latest is tracked
 results/*

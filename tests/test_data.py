@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 import pytest
 
@@ -73,6 +75,9 @@ def test_csv_source_and_store_round_trip(tmp_path, daily: pd.DataFrame) -> None:
     store.fetch(market)
     loaded = store.load("XYZ", "1d")
     pd.testing.assert_frame_equal(loaded, daily, check_freq=False)
+    manifest = json.loads(store.manifest_path("XYZ", "1d").read_text())
+    assert manifest["provider"] == "csv"
+    assert manifest["snapshot_sha256"] and manifest["bar_count"] == len(daily)
 
 
 def test_binance_source_skips_missing_files(monkeypatch) -> None:

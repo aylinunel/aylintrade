@@ -23,3 +23,34 @@ jobs:
       - run: ruff format --check src tests
       - run: mypy
       - run: pytest --cov --cov-report=term-missing
+
+  dashboard:
+    name: Dashboard build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pip install -e .
+      - run: aylintrade site
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: aylintrade site
+      - name: Validate static output and route manifest
+        run: |
+          test -s site/index.html
+          test -s site/data.json
+          test -s site/manus-routes.json
+          test -s site/methodology/index.html
+          test -s site/research/index.html
+          test -s site/data/index.html
+          test -s site/paper/index.html
+          python -c 'import json; assert [r["path"] for r in json.load(open("site/manus-routes.json"))["routes"]] == ["/", "/methodology", "/research", "/data", "/paper"]'
