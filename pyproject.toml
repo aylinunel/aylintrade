@@ -3,15 +3,15 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "quantbt"
-version = "0.1.0"
-description = "Config-driven backtests of classic quant trading strategies across equities, crypto and futures."
+name = "aylintrade"
+version = "1.0.0"
+description = "A multi-market trend portfolio, reviewed daily by Claude agents, paper traded and published as a dashboard."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Aylin Unel" }]
-keywords = ["backtesting", "quant", "trading", "strategies", "finance"]
+keywords = ["backtesting", "quant", "trading", "trend-following", "risk-parity", "llm-agents"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -25,13 +25,12 @@ dependencies = [
     "pandas>=2.0",
     "pyarrow>=14",
     "pyyaml>=6.0",
-    "statsmodels>=0.14",
 ]
 
 [project.optional-dependencies]
-plot = ["matplotlib>=3.7"]
+agents = ["anthropic>=1.0"]
 dev = [
-    "matplotlib>=3.7",
+    "anthropic>=1.0",
     "mypy>=1.8",
     "pandas-stubs>=2.0",
     "pytest>=7.4",
@@ -41,13 +40,13 @@ dev = [
 ]
 
 [project.scripts]
-quantbt = "quantbt.cli:main"
+aylintrade = "aylintrade.cli:main"
 
 [project.urls]
 Repository = "https://github.com/aylinunel/aylintrade"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/quantbt"]
+packages = ["src/aylintrade"]
 
 [tool.ruff]
 line-length = 100
@@ -65,7 +64,7 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.11"
-packages = ["quantbt"]
+packages = ["aylintrade"]
 mypy_path = "src"
 ignore_missing_imports = true
 warn_unused_ignores = true
@@ -79,5 +78,5 @@ addopts = "-ra --strict-markers"
 markers = ["network: tests that download data (deselect with -m 'not network')"]
 
 [tool.coverage.run]
-source = ["quantbt"]
+source = ["aylintrade"]
 branch = true

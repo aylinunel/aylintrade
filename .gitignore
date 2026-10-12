@@ -18,6 +18,9 @@ venv/
 coverage.xml
 htmlcov/
 
+# Dashboard data is built by `aylintrade site` and deployed, not committed
+/site/data.json
+
 # Results: only the published snapshot in results/latest is tracked
 results/*
 !results/latest/

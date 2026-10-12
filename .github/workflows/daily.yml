@@ -1,0 +1,49 @@
+name: Daily
+
+# Once a day after the US close: fresh prices, the backtest, one paper trading day (with the
+# Claude agent committee when the ANTHROPIC_API_KEY secret is set), then publish the dashboard.
+on:
+  schedule:
+    - cron: "17 6 * * 2-6" # 06:17 UTC, Tuesday to Saturday: after each US session's data lands
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit the paper account
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[agents]"
+      - run: aylintrade daily
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Commit the paper account and results
+        run: |
+          git config user.name "aylintrade-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add paper results/latest
+          git diff --cached --quiet || git commit -m "Paper trading day $(date -u +%F)"
+          git push
+      - run: cat results/latest/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5

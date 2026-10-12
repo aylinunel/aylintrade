@@ -4,26 +4,23 @@ from pathlib import Path
 
 import pytest
 
-from quantbt.config import ConfigError, load_config, parse_config
-from quantbt.strategies import create_strategy
+from aylintrade.config import ConfigError, load_config, parse_config
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def minimal(**market_overrides):
-    market = {"periods_per_year": 252, "cost_per_side": 0.001, "data": {"1d": {"source": "csv"}}}
+def minimal(algorithm=None, agents=None, **market_overrides):
+    market = {"cost_per_side": 0.001, "data": {"1d": {"source": "csv"}}}
     market.update(market_overrides)
-    return {"markets": {"A": market}, "strategies": {"macd": {}}}
+    return {"markets": {"A": market}, "algorithm": algorithm or {}, "agents": agents or {}}
 
 
-def test_default_config_is_valid_and_strategies_construct() -> None:
+def test_default_config() -> None:
     cfg = load_config(ROOT / "configs" / "default.yaml")
-    assert {"SPY", "BTC", "ETH", "ES", "GC", "CL"} <= {m.id for m in cfg.traded_markets}
-    for sid, params in cfg.strategies.items():
-        create_strategy(sid, params)
-    for spec in cfg.robustness:
-        for params in spec.param_sets:
-            create_strategy(spec.strategy, params)
+    assert cfg.portfolio_markets == ["SPY", "QQQ", "IWM", "EFA", "GLD", "TLT", "BTC", "ETH"]
+    assert {"ES", "GC", "CL"} <= set(cfg.markets) - set(cfg.portfolio_markets)
+    assert cfg.algorithm.max_gross == 1.0 and cfg.algorithm.warmup == 252
+    assert 0 < cfg.agents.max_cut <= 1
 
 
 def test_daily_data_required() -> None:
@@ -31,25 +28,28 @@ def test_daily_data_required() -> None:
         parse_config(minimal(data={"1h": {"source": "csv"}}))
 
 
-def test_unknown_interval() -> None:
-    with pytest.raises(ConfigError, match="interval"):
-        parse_config(minimal(data={"1d": {"source": "csv"}, "5m": {"source": "csv"}}))
-
-
 def test_cost_given_in_basis_points_is_caught() -> None:
     with pytest.raises(ConfigError, match="fraction"):
         parse_config(minimal(cost_per_side=5))
 
 
-def test_unknown_pair_partner() -> None:
-    with pytest.raises(ConfigError, match="pair_with"):
-        parse_config(minimal(pair_with="Z"))
+@pytest.mark.parametrize(
+    ("section", "bad", "match"),
+    [
+        ("algorithm", {"target_vol": 10}, "target_vol"),
+        ("algorithm", {"max_gross": 5}, "max_gross"),
+        ("algorithm", {"trend_floor": 2}, "trend_floor"),
+        ("algorithm", {"horizons": [1]}, "horizons"),
+        ("algorithm", {"tagret_vol": 0.1}, "unknown"),
+        ("agents", {"max_cut": 1.5}, "max_cut"),
+        ("agents", {"debate_rounds": 0}, "debate_rounds"),
+    ],
+)
+def test_bad_settings_are_rejected(section: str, bad: dict, match: str) -> None:
+    with pytest.raises(ConfigError, match=match):
+        parse_config(minimal(**{section: bad}))
 
 
-def test_select_keeps_partner_as_untraded() -> None:
-    cfg = load_config(ROOT / "configs" / "default.yaml").select(["SPY"], ["macd"])
-    assert [m.id for m in cfg.traded_markets] == ["SPY"]
-    assert "DIA" in cfg.markets and not cfg.markets["DIA"].trade
-    assert list(cfg.strategies) == ["macd"]
-    with pytest.raises(ConfigError, match="Unknown market"):
-        cfg.select(["NOPE"])
+def test_needs_a_portfolio_market() -> None:
+    with pytest.raises(ConfigError, match="portfolio"):
+        parse_config(minimal(portfolio=False))

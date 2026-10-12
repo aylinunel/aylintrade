@@ -1,10 +1,14 @@
-quantbt
+aylintrade
 Copyright 2026 Aylin Unel
 
-This product re-implements trading strategies from "quant-trading" by je-suis-tm
-(https://github.com/je-suis-tm/quant-trading), licensed under the Apache License 2.0.
-Strategy logic was ported and modified: look-ahead bias was removed and price-unit
-thresholds were rescaled to percentages. See docs/methodology.md for every change.
+This product builds on ideas and logic from the following projects:
+  - "quant-trading" by je-suis-tm (https://github.com/je-suis-tm/quant-trading),
+    Apache License 2.0. The MACD trend filter is the origin of the trend score.
+  - "TradingAgents" by TauricResearch (https://github.com/TauricResearch/TradingAgents),
+    Apache License 2.0. The agent roles, rating scale and settled-decision memory.
+  - "trading-terminal" by Superior-Trade (https://github.com/Superior-Trade/trading-terminal),
+    Apache License 2.0. The deterministic guard on model output and decision logging.
+No source code from these projects is included. See docs/research-notes.md.
 
 Market data is downloaded at run time from third-party datasets and is not distributed
 with this repository:
