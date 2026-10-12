@@ -40,7 +40,8 @@ def close_prices(daily: dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     px = pd.DataFrame({m: df["Close"] for m, df in daily.items()})
     last_common = min(df.index[-1] for df in daily.values())
-    px = px[(px.index.dayofweek < 5) & (px.index <= last_common)]
+    days = pd.DatetimeIndex(px.index)
+    px = px[(days.dayofweek < 5) & (days <= last_common)]
     return px.ffill()
 
 
@@ -48,7 +49,7 @@ def trend_score(px: pd.DataFrame, horizons: tuple[int, ...]) -> pd.DataFrame:
     """Share of up-votes in [0, 1]; NaN until the longest horizon has data."""
     votes = [(px > px.rolling(h).mean()).astype(float) for h in horizons]
     votes += [(px.pct_change(h, fill_method=None) > 0).astype(float) for h in horizons]
-    score = sum(votes) / len(votes)
+    score = sum(votes[1:], votes[0]) / len(votes)
     return score.where(px.rolling(max(horizons)).mean().notna())
 
 

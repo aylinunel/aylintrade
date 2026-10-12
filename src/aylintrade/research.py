@@ -78,8 +78,8 @@ def _weekly(r: pd.Series) -> pd.Series:
 
 def _start(px: pd.DataFrame, p: AlgorithmConfig) -> pd.Timestamp:
     """The configured start, or later if the first market lacks a warm-up year before it."""
-    first = px.apply(lambda c: c.first_valid_index()).min()
-    earliest = px.index[min(px.index.get_loc(first) + p.warmup, len(px) - 1)]
+    first = int(np.argmax(px.notna().any(axis=1).to_numpy()))
+    earliest = px.index[min(first + p.warmup, len(px) - 1)]
     return max(pd.Timestamp(p.start), earliest)
 
 
@@ -150,10 +150,10 @@ def robustness(cfg: Config, px: pd.DataFrame, start: pd.Timestamp) -> list[dict[
 
     full = run()
     for chunk in np.array_split(np.arange(len(full.returns)), 3):
-        idx = full.returns.index[chunk]
+        idx = pd.DatetimeIndex(full.returns.index[chunk])
         period = f"{idx[0].year}-{idx[-1].year}"
 
-        def cut(s: Simulation, idx: pd.DatetimeIndex = idx) -> Simulation:
+        def cut(s: Simulation, idx: pd.Index = idx) -> Simulation:
             return Simulation(s.returns[idx], s.weights.loc[idx], s.turnover[idx])
 
         rows.append(row("Sub-period", period, cut(full), cut(spy) if spy else None))
@@ -178,7 +178,10 @@ def run_study(cfg: Config) -> dict[str, Any]:
     log.info("portfolio %s to %s, %d markets", start.date(), px.index[-1].date(), px.shape[1])
 
     yearly = pd.DataFrame(
-        {k: (1 + s.returns).groupby(s.returns.index.year).prod() - 1 for k, s in sims.items()}
+        {
+            k: (1 + s.returns).groupby(pd.DatetimeIndex(s.returns.index).year).prod() - 1
+            for k, s in sims.items()
+        }
     )
     curves = pd.DataFrame({k: _weekly(s.returns) for k, s in sims.items()})
     drawdown = curves / curves.cummax() - 1

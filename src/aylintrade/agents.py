@@ -95,8 +95,8 @@ def apply_review(
     Returns the weights and a status per market: ``ok``, ``clamped`` (the committee asked for
     more than it may) or ``review`` (no readable decision; the target is kept).
     """
-    final, status = targets.copy(), {}
-    for m, target in targets.items():
+    final, status = targets.to_dict(), {}
+    for m, target in targets.to_dict().items():
         d = decisions.get(str(m))
         keep = d.get("keep") if d else None
         if not isinstance(keep, (int, float)) or isinstance(keep, bool) or np.isnan(keep):
@@ -105,7 +105,7 @@ def apply_review(
         allowed = float(np.clip(keep, 1 - max_cut, 1.0))
         status[str(m)] = "ok" if allowed == keep else "clamped"
         final[m] = target * allowed
-    return final, status
+    return pd.Series(final, index=targets.index, dtype=float), status
 
 
 # ------------------------------------------------------------------ committee

@@ -73,10 +73,10 @@ def lessons(decisions: pd.DataFrame, n: int = 10) -> list[str]:
         return []
     cuts = done[done["final"] < done["target"]].tail(n)
     out = [
-        f"{r.date} {r.market}: held {r.keep:.0%} of target ({r.rating}: {r.reason}). "
-        f"Next {SETTLE_DAYS} days {r.return_5d:+.1%}; the cut "
-        f"{'helped' if r.effect > 0 else 'cost'} {abs(r.effect):.2%} of the portfolio."
-        for r in cuts.itertuples()
+        f"{r['date']} {r['market']}: held {r['keep']:.0%} of target ({r['rating']}: "
+        f"{r['reason']}). Next {SETTLE_DAYS} days {r['return_5d']:+.1%}; the cut "
+        f"{'helped' if r['effect'] > 0 else 'cost'} {abs(r['effect']):.2%} of the portfolio."
+        for r in cuts.to_dict("records")
     ]
     total = done["effect"].sum()
     out.append(
@@ -118,20 +118,20 @@ def run_day(cfg: Config, px: pd.DataFrame, use_agents: bool = True, client: Any 
     new = rebalance(final, current, cfg.algorithm.rebalance_band)
 
     trades, cash = [], state["cash"]
-    for m in px.columns:
-        value = (new[m] - current[m]) * equity
+    deltas = ((new - current) * equity).to_numpy(float)
+    for m, value, price in zip(px.columns, deltas, close.to_numpy(float), strict=True):
         if abs(value) < 1e-9:
             continue
         cost = abs(value) * cfg.markets[m].cost_per_side
         cash -= value + cost
-        units[m] += value / close[m]
+        units[m] += value / price
         trades.append(
             {
                 "date": date,
                 "market": m,
                 "side": "buy" if value > 0 else "sell",
-                "units": round(value / close[m], 8),
-                "price": float(close[m]),
+                "units": round(value / price, 8),
+                "price": float(price),
                 "value": round(value, 2),
                 "cost": round(cost, 2),
             }
