@@ -1,0 +1,37 @@
+market,strategy,test,setting,cagr,sharpe,max_drawdown,total_return
+SPY,macd,parameters,"{""fast"": 5, ""slow"": 20}",0.0403872,0.404693,-0.513147,2.51182
+SPY,macd,parameters,"{""fast"": 10, ""slow"": 21} (default)",0.0549977,0.515064,-0.283407,4.46615
+SPY,macd,parameters,"{""fast"": 12, ""slow"": 26}",0.0545042,0.51264,-0.271214,4.38561
+SPY,macd,parameters,"{""fast"": 20, ""slow"": 50}",0.056452,0.515469,-0.39513,4.71034
+SPY,macd,parameters,"{""fast"": 50, ""slow"": 200}",0.0955897,0.727146,-0.337173,17.1083
+SPY,macd,cost per side,0.05%,0.0549977,0.515064,-0.283407,4.46615
+SPY,macd,cost per side,0.10%,0.0488739,0.465269,-0.317826,3.54434
+SPY,macd,cost per side,0.15%,0.0427827,0.415441,-0.355014,2.77764
+SPY,macd,subperiod,1995-2010,0.0504515,0.453713,-0.283407,1.18339
+SPY,buy_and_hold,subperiod,1995-2010,0.0808717,0.479073,-0.551894,2.43423
+SPY,macd,subperiod,2010-2026,0.0595646,0.589842,-0.192278,1.50351
+SPY,buy_and_hold,subperiod,2010-2026,0.144782,0.882786,-0.337173,7.53904
+BTC,macd,parameters,"{""fast"": 5, ""slow"": 20}",0.34711,0.880259,-0.684825,14.3176
+BTC,macd,parameters,"{""fast"": 10, ""slow"": 21} (default)",0.398058,0.952683,-0.730315,20.5204
+BTC,macd,parameters,"{""fast"": 12, ""slow"": 26}",0.311959,0.814059,-0.710098,11.0232
+BTC,macd,parameters,"{""fast"": 20, ""slow"": 50}",0.360247,0.885354,-0.748596,15.7414
+BTC,macd,parameters,"{""fast"": 50, ""slow"": 200}",0.182236,0.59927,-0.667809,3.63331
+BTC,macd,cost per side,0.10%,0.398058,0.952683,-0.730315,20.5204
+BTC,macd,cost per side,0.20%,0.372428,0.91258,-0.74506,17.1658
+BTC,macd,cost per side,0.30%,0.347243,0.872431,-0.759012,14.3314
+BTC,macd,subperiod,2017-2022,0.862883,1.39543,-0.505562,16.2851
+BTC,buy_and_hold,subperiod,2017-2022,0.621639,1.01001,-0.831871,8.15721
+BTC,macd,subperiod,2022-2026,0.0490354,0.31136,-0.530426,0.245027
+BTC,buy_and_hold,subperiod,2022-2026,0.17991,0.582122,-0.667306,1.1327
+ETH,macd,parameters,"{""fast"": 5, ""slow"": 20}",0.390427,0.846894,-0.709146,19.4683
+ETH,macd,parameters,"{""fast"": 10, ""slow"": 21} (default)",0.489317,0.953372,-0.691844,37.4036
+ETH,macd,parameters,"{""fast"": 12, ""slow"": 26}",0.6698,1.14907,-0.586545,108.487
+ETH,macd,parameters,"{""fast"": 20, ""slow"": 50}",0.480281,0.940938,-0.677948,35.3217
+ETH,macd,parameters,"{""fast"": 50, ""slow"": 200}",0.148359,0.536924,-0.793563,2.55015
+ETH,macd,cost per side,0.10%,0.489317,0.953372,-0.691844,37.4036
+ETH,macd,cost per side,0.20%,0.461822,0.92313,-0.697997,31.3783
+ETH,macd,cost per side,0.30%,0.434809,0.89286,-0.704033,26.2936
+ETH,macd,subperiod,2017-2022,1.10152,1.37852,-0.691844,29.0237
+ETH,buy_and_hold,subperiod,2017-2022,0.601959,0.982559,-0.939655,7.65908
+ETH,macd,subperiod,2022-2026,0.0552421,0.347103,-0.50596,0.27911
+ETH,buy_and_hold,subperiod,2022-2026,-0.00682421,0.327837,-0.717446,-0.0308626
