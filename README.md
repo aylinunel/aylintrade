@@ -3,7 +3,7 @@
 **Config-driven backtests of classic quant trading strategies on equities, crypto and futures.**
 
 [![CI](https://github.com/aylinunel/aylintrade/actions/workflows/ci.yml/badge.svg)](https://github.com/aylinunel/aylintrade/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
+![Python](https://img.shields.io/badge/python-3.11%E2%80%933.13-blue)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green)
 
 `quantbt` re-implements nine strategies from
@@ -43,7 +43,7 @@ After costs, **6 of 48 strategy-market tests beat simply holding the asset** on 
 
 ```bash
 git clone https://github.com/aylinunel/aylintrade && cd aylintrade
-pip install -e ".[plot]"        # Python 3.10+
+pip install -e ".[plot]"        # Python 3.11+
 
 quantbt list                    # strategies, data sources, markets
 quantbt fetch                   # download data into data/ (~200 MB, cached)
@@ -130,7 +130,7 @@ make lint      # ruff + mypy
 make test      # 66 offline tests, ~90% coverage
 ```
 
-CI runs lint, types and tests on Python 3.10–3.13 for every push and pull request.
+CI runs lint, types and tests on Python 3.11–3.13 for every push and pull request.
 
 ## Data sources
 

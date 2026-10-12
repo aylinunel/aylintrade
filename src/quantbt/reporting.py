@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import platform
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +31,7 @@ def write_run(
     meta = {
         "quantbt_version": __version__,
         "python": platform.python_version(),
-        "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "config": config_snapshot or {},
     }
     (out_dir / "run.json").write_text(json.dumps(meta, indent=2, default=str))
