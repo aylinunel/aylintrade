@@ -1,0 +1,84 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "quantbt"
+version = "0.1.0"
+description = "Config-driven backtests of classic quant trading strategies across equities, crypto and futures."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Aylin Unel" }]
+keywords = ["backtesting", "quant", "trading", "strategies", "finance"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "pyarrow>=14",
+    "pyyaml>=6.0",
+    "statsmodels>=0.14",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+dev = [
+    "matplotlib>=3.7",
+    "mypy>=1.8",
+    "pandas-stubs>=2.0",
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.5",
+    "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+quantbt = "quantbt.cli:main"
+
+[project.urls]
+Repository = "https://github.com/aylinunel/aylintrade"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/quantbt"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "NPY", "PD", "RUF"]
+ignore = [
+    "E741",  # o, h, l, c are the conventional names for open/high/low/close
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PD", "B018"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["quantbt"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["network: tests that download data (deselect with -m 'not network')"]
+
+[tool.coverage.run]
+source = ["quantbt"]
+branch = true
