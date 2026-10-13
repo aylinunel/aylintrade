@@ -10,6 +10,7 @@ import json
 import logging
 from dataclasses import replace
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from . import __version__
 from .algorithm import PERIODS_PER_YEAR, Simulation, close_prices, raw_weights, simulate
 from .config import AlgorithmConfig, Config
 from .data import DataStore
+from .data.provenance import build_provenance
 from .metrics import compute_metrics
 
 log = logging.getLogger(__name__)
@@ -168,6 +170,23 @@ def _describe(p: AlgorithmConfig) -> str:
     )
 
 
+def study_evidence(cfg: Config) -> dict[str, Any]:
+    """Return the evidence contract used for new and already-cached study results."""
+    return {
+        "schema_version": "1.0",
+        "eligibility": "author_reported_unverified",
+        "decision_frequency": "daily",
+        "decision_timing": "daily close; next-day study return",
+        "source_provenance": build_provenance(cfg),
+        "required_for_promotion": [
+            "rights-cleared source agreement",
+            "pinned source version and snapshot hash",
+            "documented point-in-time availability",
+            "independent reproduction and holdout validation",
+        ],
+    }
+
+
 def run_study(cfg: Config) -> dict[str, Any]:
     """Backtest the portfolio and its benchmarks; return everything as plain JSON data."""
     p, costs = cfg.algorithm, cfg.costs()
@@ -186,7 +205,7 @@ def run_study(cfg: Config) -> dict[str, Any]:
     curves = pd.DataFrame({k: _weekly(s.returns) for k, s in sims.items()})
     drawdown = curves / curves.cummax() - 1
     weights = algo.weights.resample("W-FRI").last()
-    return {
+    study = {
         "version": __version__,
         "created_utc": datetime.now(UTC).isoformat(timespec="seconds"),
         "as_of": str(px.index[-1].date()),
@@ -202,6 +221,8 @@ def run_study(cfg: Config) -> dict[str, Any]:
         "per_market": per_market(cfg),
         "robustness": robustness(cfg, px, start),
     }
+    study["evidence"] = study_evidence(cfg)
+    return study
 
 
 def _cols(df: pd.DataFrame) -> dict[str, list[float | None]]:
@@ -210,7 +231,12 @@ def _cols(df: pd.DataFrame) -> dict[str, list[float | None]]:
 
 def write_study(study: dict[str, Any], out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "study.json").write_text(json.dumps(study, separators=(",", ":")))
+    payload = json.dumps(study, separators=(",", ":"))
+    (out_dir / "study.json").write_text(payload)
+    evidence = dict(study.get("evidence", {}))
+    evidence["study_sha256"] = sha256(payload.encode()).hexdigest()
+    evidence["study_as_of"] = study.get("as_of")
+    (out_dir / "evidence.json").write_text(json.dumps(evidence, separators=(",", ":")))
     (out_dir / "summary.md").write_text(summary_markdown(study))
 
 

@@ -15,8 +15,7 @@ from aylintrade.algorithm import (
     simulate,
     trend_score,
 )
-from aylintrade.config import AlgorithmConfig
-from aylintrade.metrics import compute_metrics
+from aylintrade.config import AlgorithmConfig, ConfigError
 
 P = AlgorithmConfig(start="2018-01-01")
 
@@ -57,11 +56,9 @@ def test_trend_floor_keeps_a_core_position(prices: pd.DataFrame) -> None:
     assert (core.iloc[late] > 0).all().all(), "with a core every market stays held"
 
 
-def test_volatility_target_is_hit_when_leverage_allowed(prices: pd.DataFrame) -> None:
-    p = replace(P, max_gross=3.0, rebalance_band=0.0, target_vol=0.08)
-    sim = simulate(prices, raw_weights(prices, p), {}, 0.0, prices.index[p.warmup])
-    vol = compute_metrics(sim.returns, 252).volatility
-    assert 0.06 < vol < 0.10
+def test_config_rejects_leverage() -> None:
+    with pytest.raises(ConfigError, match="leverage"):
+        AlgorithmConfig(max_gross=1.01)
 
 
 def test_simulate_buy_and_hold_matches_price(prices: pd.DataFrame) -> None:

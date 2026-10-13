@@ -26,7 +26,10 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -117,6 +120,11 @@ class Review:
     reports: dict[str, str] = field(default_factory=dict)
     sources: list[dict[str, str]] = field(default_factory=list)
     models: dict[str, str] = field(default_factory=dict)
+    provider: str = "Anthropic Messages API"
+    run_at: str | None = None
+    configuration: dict[str, Any] = field(default_factory=dict)
+    input_hash: str | None = None
+    errors: list[str] = field(default_factory=list)
 
 
 ANALYST_SYSTEM = (
@@ -204,13 +212,16 @@ class Committee:
             if block.type == "text":
                 texts.append(block.text)
                 for c in getattr(block, "citations", None) or []:
-                    self.sources.append({"title": c.title or c.url, "url": c.url})
+                    source = _safe_source(c.title or c.url, c.url)
+                    if source is not None:
+                        self.sources.append(source)
         if forced:
             raise ValueError("the portfolio manager did not submit decisions")
         return "\n".join(texts).strip()
 
     def run(self, facts: list[dict[str, Any]], lessons: list[str], date: str) -> Review:
         cfg, table = self.cfg, json.dumps(facts, indent=1)
+        run_at = datetime.now(UTC).isoformat(timespec="seconds")
         held = [f["label"] for f in facts if f["target_weight"] > 0]
         jobs = {
             "market": lambda: self.ask(
@@ -285,15 +296,33 @@ class Committee:
             reports=reports,
             sources=_unique(self.sources),
             models={"analysts": cfg.analyst_model, "manager": cfg.manager_model},
+            run_at=run_at,
+            configuration={
+                "mode": cfg.mode,
+                "news_search": cfg.news_search,
+                "max_searches": cfg.max_searches,
+                "debate_rounds": cfg.debate_rounds,
+                "max_cut": cfg.max_cut,
+            },
+            input_hash=sha256(json.dumps(facts, sort_keys=True).encode()).hexdigest(),
         )
+
+
+def _safe_source(title: str, url: str) -> dict[str, str] | None:
+    """Only persist normal external HTTP(S) citations from untrusted model output."""
+    parsed = urlparse(str(url))
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return {"title": str(title)[:240], "url": parsed.geturl()[:2048]}
 
 
 def _unique(sources: list[dict[str, str]]) -> list[dict[str, str]]:
     seen, out = set(), []
     for s in sources:
-        if s["url"] not in seen:
-            seen.add(s["url"])
-            out.append(s)
+        source = _safe_source(s.get("title", "citation"), s.get("url", ""))
+        if source is not None and source["url"] not in seen:
+            seen.add(source["url"])
+            out.append(source)
     return out
 
 
@@ -314,4 +343,5 @@ def review(
         return Committee(cfg, client).run(facts, lessons, date)
     except Exception as e:  # any API or parsing failure falls back to the algorithm
         log.error("agent committee failed: %s", e)
-        return Review(status=f"error: {type(e).__name__}: {e}"[:300])
+        message = f"{type(e).__name__}: {e}"[:300]
+        return Review(status=f"error: {message}", errors=[message])

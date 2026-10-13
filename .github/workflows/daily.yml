@@ -1,14 +1,14 @@
 name: Daily
 
-# Once a day after the US close: fresh prices, the backtest, one paper trading day (with the
-# Claude agent committee when the ANTHROPIC_API_KEY secret is set), then publish the dashboard.
+# Once a day after the US close: refresh the baseline, run one paper-account day,
+# refresh current macro context, then build a static research dashboard.
 on:
   schedule:
     - cron: "17 6 * * 2-6" # 06:17 UTC, Tuesday to Saturday: after each US session's data lands
   workflow_dispatch:
 
 permissions:
-  contents: write # commit the paper account
+  contents: write # commits the paper account and research snapshot
   pages: write
   id-token: write
 
@@ -29,7 +29,15 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
       - run: pip install -e ".[agents]"
+      # Daily targets remain the deterministic baseline: the default committee mode records
+      # cited commentary and hypothetical shadow outcomes but cannot change paper weights.
       - run: aylintrade daily
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -41,6 +49,9 @@ jobs:
           git diff --cached --quiet || git commit -m "Paper trading day $(date -u +%F)"
           git push
       - run: cat results/latest/summary.md >> "$GITHUB_STEP_SUMMARY"
+      # Build before `aylintrade site`: Vite clears site/, then Python writes its versioned data.
+      - run: pnpm build
+      - run: aylintrade site
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

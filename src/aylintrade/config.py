@@ -54,8 +54,8 @@ class AlgorithmConfig:
             raise ConfigError("algorithm.trend_floor must be in [0, 1]")
         if not 0 < self.target_vol < 1:
             raise ConfigError("algorithm.target_vol is a fraction, e.g. 0.10 for 10% a year")
-        if not 0 < self.max_gross <= 3:
-            raise ConfigError("algorithm.max_gross must be in (0, 3]; 1.0 means no leverage")
+        if not 0 < self.max_gross <= 1:
+            raise ConfigError("algorithm.max_gross must be in (0, 1]; leverage is not supported")
         if not 0 <= self.rebalance_band < 0.5:
             raise ConfigError("algorithm.rebalance_band must be in [0, 0.5)")
 
@@ -69,6 +69,7 @@ class AgentsConfig:
     """The Claude review committee. It runs only when ANTHROPIC_API_KEY is set."""
 
     enabled: bool = True
+    mode: str = "commentary_shadow"
     analyst_model: str = "claude-sonnet-5-5"
     manager_model: str = "claude-opus-5-5"
     news_search: bool = True
@@ -81,6 +82,59 @@ class AgentsConfig:
             raise ConfigError("agents.max_cut must be in [0, 1]")
         if self.debate_rounds < 1:
             raise ConfigError("agents.debate_rounds must be at least 1")
+        if self.mode != "commentary_shadow":
+            raise ConfigError("agents.mode must be commentary_shadow in this release")
+
+
+@dataclass(frozen=True)
+class MacroConfig:
+    """Display-only macro context until vintage-aware historical data is approved."""
+
+    enabled: bool = True
+    fetch_current: bool = True
+    source_status: str = "current_context_only"
+    series: tuple[str, ...] = (
+        "DGS2",
+        "DGS10",
+        "T10Y2Y",
+        "DFII10",
+        "CPIAUCSL",
+        "CPILFESL",
+        "PAYEMS",
+        "UNRATE",
+        "ICSA",
+        "INDPRO",
+        "BAMLH0A0HYM2",
+        "DTWEXBGS",
+        "VIXCLS",
+    )
+
+    def __post_init__(self) -> None:
+        if self.source_status not in {"current_context_only", "quarantined", "disabled"}:
+            raise ConfigError(
+                "macro.source_status must be current_context_only, quarantined or disabled"
+            )
+        if not self.series:
+            raise ConfigError("macro.series must name at least one macro series")
+
+
+@dataclass(frozen=True)
+class IntradayConfig:
+    """Settings for a separately measured hourly overlay with no baseline weight impact."""
+
+    enabled: bool = True
+    mode: str = "shadow"
+    source_status: str = "quarantined"
+    horizons: tuple[int, ...] = (4, 12, 24, 72)
+    vol_windows: tuple[int, ...] = (24, 168)
+
+    def __post_init__(self) -> None:
+        if self.mode != "shadow":
+            raise ConfigError("intraday.mode is shadow in this paper-only implementation")
+        if self.source_status not in {"quarantined", "unavailable", "approved_research"}:
+            raise ConfigError("intraday.source_status is invalid")
+        if min((*self.horizons, *self.vol_windows)) < 2:
+            raise ConfigError("intraday horizons and volatility windows must be at least 2 bars")
 
 
 @dataclass(frozen=True)
@@ -88,6 +142,8 @@ class Config:
     markets: dict[str, MarketConfig]
     algorithm: AlgorithmConfig = field(default_factory=AlgorithmConfig)
     agents: AgentsConfig = field(default_factory=AgentsConfig)
+    macro: MacroConfig = field(default_factory=MacroConfig)
+    intraday: IntradayConfig = field(default_factory=IntradayConfig)
     paper_capital: float = 100_000.0
     data_dir: Path = Path("data")
     results_dir: Path = Path("results/latest")
@@ -139,8 +195,10 @@ def _section(cls: type, raw: Any, name: str) -> Any:
     unknown = sorted(set(raw) - known)
     if unknown:
         raise ConfigError(f"{name}: unknown field(s) {unknown}; allowed: {sorted(known)}")
-    if "horizons" in raw:
-        raw["horizons"] = tuple(int(h) for h in raw["horizons"])
+    for tuple_field in ("horizons", "vol_windows", "series"):
+        if tuple_field in raw:
+            cast = str if tuple_field == "series" else int
+            raw[tuple_field] = tuple(cast(value) for value in raw[tuple_field])
     if "start" in raw:
         raw["start"] = str(raw["start"])
     return cls(**raw)
@@ -158,6 +216,8 @@ def parse_config(raw: dict[str, Any], base_dir: Path | None = None) -> Config:
         markets=markets,
         algorithm=_section(AlgorithmConfig, raw.get("algorithm"), "algorithm"),
         agents=_section(AgentsConfig, raw.get("agents"), "agents"),
+        macro=_section(MacroConfig, raw.get("macro"), "macro"),
+        intraday=_section(IntradayConfig, raw.get("intraday"), "intraday"),
         paper_capital=float(raw.get("paper", {}).get("capital", 100_000)),
         data_dir=base / raw.get("data_dir", "data"),
         results_dir=base / raw.get("results_dir", "results/latest"),

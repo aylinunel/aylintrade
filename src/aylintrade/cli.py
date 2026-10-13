@@ -52,8 +52,20 @@ def cmd_backtest(cfg: Config, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_macro(cfg: Config, args: argparse.Namespace) -> int:
+    from .macro import fetch_current_context
+
+    if not cfg.macro.enabled:
+        log.info("macro context is disabled in the config")
+        return 0
+    context = fetch_current_context(cfg.data_dir, cfg.macro)
+    print(f"macro context: {context['status']}; {len(context['series'])} series")
+    return 0
+
+
 def cmd_daily(cfg: Config, args: argparse.Namespace) -> int:
     from .algorithm import close_prices
+    from .macro import fetch_current_context
     from .paper import run_day
     from .research import load_daily, run_study, write_study
     from .site import build_site_data
@@ -69,6 +81,11 @@ def cmd_daily(cfg: Config, args: argparse.Namespace) -> int:
         return 1
     write_study(run_study(cfg), cfg.results_dir)
     run_day(cfg, close_prices(daily), use_agents=not args.no_agents)
+    if cfg.macro.enabled and cfg.macro.fetch_current:
+        try:
+            fetch_current_context(cfg.data_dir, cfg.macro)
+        except Exception as exc:  # macro context must never block a paper-account baseline day
+            log.warning("macro context unavailable: %s", exc)
     build_site_data(cfg)
     return 0
 
@@ -91,6 +108,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--force", action="store_true", help="re-download cached data")
     sp.set_defaults(func=cmd_fetch)
     sub.add_parser("backtest", help="run the backtest study").set_defaults(func=cmd_backtest)
+    sub.add_parser(
+        "macro", help="build current macro context (not a historical signal)"
+    ).set_defaults(func=cmd_macro)
     sp = sub.add_parser("daily", help="fetch, backtest, trade one paper day, build site data")
     sp.add_argument("--no-agents", action="store_true", help="skip the agent committee")
     sp.add_argument("--no-fetch", action="store_true", help="use the cached data")
