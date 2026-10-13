@@ -1,4 +1,48 @@
-# quantbt
+# aylintrade
+
+## Quant Agent Studio
+
+An observable research workflow with bounded strategy discovery, chronological validation,
+independent agent reviews and a reconciled historical paper ledger.
+
+```bash
+pip install -e ".[dev]"
+quantbt studio
+```
+
+Open **http://127.0.0.1:8765**. The offline demo requires no API keys. Click any agent to see
+its evidence, inspect committee decisions and explore strategy trials and paper equity.
+Synthetic prices and failed numerical gates cannot produce eligible trade suggestions.
+The depth view displays the same workflow in perspective.
+
+```mermaid
+flowchart TD
+    D[Data steward] --> S[Strategy deviser]
+    S --> V[Chronological validation]
+    V --> Q[Quant reviewer]
+    V --> M[Market reviewer]
+    V --> N[Event reviewer]
+    V --> R[Risk reviewer]
+    Q --> P[Portfolio and risk gate]
+    M --> P
+    N --> P
+    R --> P
+    P --> L[Historical paper ledger]
+```
+
+- Four independent reviewer roles, concurrent review and a three-approval policy.
+- Nine bounded template trials with true EMA MACD and Awesome Oscillator variants.
+- Saved SQLite events, source provenance, dataset hashes and downloadable evidence.
+- Next-open spot fills, fees, adverse slippage, gap stops and reconciled cash.
+- Optional OpenAI-compatible LLM reviewers; rule-based mode is the default.
+- Loopback-only server, bounded job admission and no frontend build dependency.
+
+See [setup and limits](docs/studio.md), [measured benchmark](docs/benchmark.md) and
+[Ponytail engineering rules](AGENTS.md). The studio is an experimental single-user paper
+research tool. Derivatives, autonomous orders, portfolio-wide allocation and advanced ML
+remain explicit research extensions. It does not pretend those are implemented.
+
+## Existing quant backtest CLI
 
 **Config-driven backtests of classic quant trading strategies on equities, crypto and futures.**
 
@@ -15,7 +59,10 @@ comparable across strategies and markets.
 > Research only, not financial advice. Past performance, especially on one year of futures data,
 > says little about the future.
 
-## Results
+## Legacy results
+
+These committed results precede the corrected cointegration inference and hedge sizing.
+They are retained as historical artifacts; rerun before quoting them as current code results.
 
 After costs, **6 of 48 strategy-market tests beat simply holding the asset** on Sharpe ratio
 (return per unit of risk). Full tables are in [`results/latest/summary.md`](results/latest/summary.md).
@@ -144,3 +191,4 @@ CI runs lint, types and tests on Python 3.11–3.13 for every push and pull requ
 
 Apache-2.0. Strategy logic is adapted from je-suis-tm/quant-trading (Apache-2.0); see
 [NOTICE](NOTICE).
+

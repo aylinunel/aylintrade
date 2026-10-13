@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -53,6 +54,12 @@ class DataStore:
             symbol = spec.params.get("symbol", market.id)
             params = {k: v for k, v in spec.params.items() if k != "symbol"}
             df = source.load(symbol, interval, **params)
+            df.attrs["quantbt_provenance"] = {
+                "source": spec.source,
+                "symbol": symbol,
+                "synthetic": False,
+                "retrieved_at": datetime.now(UTC).isoformat(),
+            }
             self.save(market.id, interval, df)
             log.info(
                 "%s %s: %d bars, %s to %s",

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "quantbt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Config-driven backtests of classic quant trading strategies across equities, crypto and futures."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.24",
-    "pandas>=2.0",
+    "pandas>=2.2",
     "pyarrow>=14",
     "pyyaml>=6.0",
     "statsmodels>=0.14",
@@ -81,3 +81,4 @@ markers = ["network: tests that download data (deselect with -m 'not network')"]
 [tool.coverage.run]
 source = ["quantbt"]
 branch = true
+

@@ -7,17 +7,9 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.stattools import coint
 
 from .base import PairStrategy, register
-
-
-def adf_pvalue(x: np.ndarray) -> float:
-    """ADF test p-value, compatible with statsmodels before and after the result-object change."""
-    try:
-        return float(adfuller(x, result_object=True).pvalue)
-    except TypeError:  # statsmodels < 0.15
-        return float(adfuller(x)[1])
 
 
 def engle_granger(
@@ -26,16 +18,18 @@ def engle_granger(
     """Engle-Granger two-step test.
 
     Returns ``(cointegrated, params, residuals)`` where ``params`` are the intercept and slope
-    of ``y ~ x``. Cointegrated means the residuals pass ADF at ``pvalue`` and the
-    error-correction coefficient is not positive.
-
-    This follows the original script, which uses ordinary ADF p-values on the residuals.
-    Those are optimistic for estimated residuals, so spurious pairs pass more often than
-    ``pvalue`` suggests (see docs/methodology.md).
+    of ``y ~ x``. Uses the Engle-Granger residual critical values and requires a
+    non-positive error-correction coefficient. Degenerate inputs fail closed.
     """
+    if len(x) < 20 or len(x) != len(y) or not np.isfinite(x).all() or not np.isfinite(y).all():
+        return False, np.array([0.0, 0.0]), np.zeros(len(x))
+    if np.std(x) < 1e-12 or np.std(y) < 1e-12:
+        return False, np.array([0.0, 0.0]), np.zeros(len(x))
     step1 = sm.OLS(y, sm.add_constant(x)).fit()
     resid = np.asarray(step1.resid)
-    if adf_pvalue(resid) > pvalue:
+    result = coint(y, x)
+    test_p = float(result.pvalue) if hasattr(result, "pvalue") else float(result[1])
+    if not np.isfinite(test_p) or test_p > pvalue or np.std(resid) < 1e-12:
         return False, np.asarray(step1.params), resid
     ecm_x = sm.add_constant(np.column_stack([np.diff(x), resid[:-1]]))
     step2 = sm.OLS(np.diff(y), ecm_x).fit()
@@ -50,7 +44,8 @@ class PairTrading(PairStrategy):
     Every bar, re-test cointegration on the previous ``window`` bars. When it starts, freeze
     the hedge model; while it holds, long ``a`` / short ``b`` when ``b`` is rich
     (z > ``z_entry``) and the reverse when it is cheap. Positions close when |z| falls back
-    inside the band or cointegration breaks. Each leg uses half the capital.
+    inside the band or cointegration breaks. Hedge quantities use the fitted slope;
+    their notionals are normalized to unit gross exposure.
     """
 
     window: int = 250
@@ -59,14 +54,18 @@ class PairTrading(PairStrategy):
 
     id = "pair_trading"
     label = "Pair trading"
-    description = "Market-neutral: trades the spread between two cointegrated assets"
+    description = "Relative value: trades a cointegrated spread with fitted hedge quantities"
+
+    def __post_init__(self) -> None:
+        if self.window < 20 or not self.z_entry > 0 or not 0 < self.pvalue < 1:
+            raise ValueError("Need window >= 20, positive entry threshold and 0 < pvalue < 1")
 
     def warmup(self) -> int:
         return self.window
 
     def positions(self, a: pd.Series, b: pd.Series) -> tuple[pd.Series, pd.Series]:
         x, y = a.to_numpy(float), b.to_numpy(float)
-        sig = np.zeros(len(x))
+        leg_a, leg_b = np.zeros(len(x)), np.zeros(len(x))
         model: tuple[np.ndarray, float, float] | None = None
         for i in range(self.window, len(x)):
             ok, params, resid = engle_granger(
@@ -78,10 +77,18 @@ class PairTrading(PairStrategy):
             if model is None:
                 model = (params, float(resid.mean()), float(resid.std(ddof=1)))
             (c0, c1), mu, sd = model
+            if sd < 1e-12 or c1 <= 0:
+                model = None
+                continue
             z = (y[i] - (c0 + c1 * x[i]) - mu) / sd
             if z > self.z_entry:
-                sig[i] = 1.0
+                side = 1.0
             elif z < -self.z_entry:
-                sig[i] = -1.0
-        leg = pd.Series(0.5 * sig, index=a.index)
-        return leg, -leg
+                side = -1.0
+            else:
+                continue
+            gross = c1 * x[i] + y[i]
+            if gross > 0:
+                leg_a[i] = side * c1 * x[i] / gross
+                leg_b[i] = -side * y[i] / gross
+        return pd.Series(leg_a, index=a.index), pd.Series(leg_b, index=b.index)
