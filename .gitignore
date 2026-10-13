@@ -26,3 +26,13 @@ results/*
 .DS_Store
 .idea/
 .vscode/
+
+# Local model credentials and generated benchmark outputs
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite.lock
+

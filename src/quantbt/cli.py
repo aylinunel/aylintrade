@@ -93,6 +93,13 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_studio(args: argparse.Namespace) -> int:
+    from .studio.server import serve
+
+    serve(args.port, Path(args.db), Path(args.data_dir), args.reviewer)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="quantbt", description=__doc__)
     p.add_argument("--version", action="version", version=f"quantbt {__version__}")
@@ -129,6 +136,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("report", help="draw charts for an existing results directory")
     sp.add_argument("results", nargs="?", default="results/latest")
     sp.set_defaults(func=cmd_report)
+
+    sp = sub.add_parser("studio", help="launch the local agent research dashboard")
+    sp.add_argument("--port", type=int, default=8765)
+    sp.add_argument("--db", default="data/studio.sqlite", help="SQLite run and event database")
+    sp.add_argument("--data-dir", default="data", help="existing quantbt Parquet cache")
+    sp.add_argument("--reviewer", choices=["rules", "llm"], default="rules")
+    sp.set_defaults(func=cmd_studio)
     return p
 
 

@@ -65,8 +65,10 @@ def test_run_requires_needed_data(daily: pd.DataFrame) -> None:
 def test_pair_legs_are_opposite(cointegrated_pair) -> None:
     a, b = cointegrated_pair
     pa, pb = create_strategy("pair_trading", {"window": 60}).positions(a, b)
-    pd.testing.assert_series_equal(pa, -pb)
-    assert pa.abs().max() == 0.5
+    assert ((pa * pb) <= 0).all()
+    active = pa != 0
+    np.testing.assert_allclose((pa.abs() + pb.abs())[active], 1.0)
+    assert not pa[active].abs().eq(0.5).all()
 
 
 class TestMetrics:

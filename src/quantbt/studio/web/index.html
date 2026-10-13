@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Quant Agent Studio
+  </title>
+  <link href="/style.css" rel="stylesheet"/>
+  <script defer="" src="/app.js">
+  </script>
+ </head>
+ <body>
+  <aside class="rail">
+   <a class="brand" href="#">
+    <span class="brand-mark">
+     q
+    </span>
+    <span>
+     aylintrade
+     <small>
+      QUANT AGENT STUDIO
+     </small>
+    </span>
+   </a>
+   <p class="rail-label">
+    WORKSPACE
+   </p>
+   <nav>
+    <a class="nav-active" href="#workflow">
+     ◈   Agent workflow
+    </a>
+    <a href="#evidence">
+     ▦   Strategy research
+    </a>
+    <a href="#ledger">
+     ≋   Paper ledger
+    </a>
+    <a href="#activity">
+     ↳   Activity stream
+    </a>
+   </nav>
+   <div class="rail-note">
+    <span class="status-dot">
+    </span>
+    Local research environment
+    <p>
+     Every decision keeps its evidence.
+     <br/>
+     No exchange orders are sent.
+    </p>
+   </div>
+  </aside>
+  <main>
+   <header>
+    <span class="crumb">
+     Workspace
+     <span>
+      /
+     </span>
+     Research room
+    </span>
+    <div class="header-right">
+     <span class="pill" id="provider">
+      RULE REVIEWERS
+     </span>
+     <span class="pill subdued">
+      PAPER ONLY
+     </span>
+    </div>
+   </header>
+   <section class="intro">
+    <div>
+     <p class="eyebrow">
+      AN OBSERVABLE QUANT WORKFLOW
+     </p>
+     <h1>
+      Agent research studio
+      <span>
+       .
+      </span>
+     </h1>
+     <p class="subtitle">
+      Follow a strategy from hypothesis to evidence, independent reviews and a paper outcome.
+     </p>
+    </div>
+    <div class="run-tools">
+     <label class="sr-only" for="history">
+      Saved runs
+     </label>
+     <select id="history">
+      <option value="">
+       Saved runs
+      </option>
+     </select>
+     <button class="secondary" disabled="" id="export">
+      Export evidence ↗
+     </button>
+    </div>
+   </section>
+   <form class="controls" id="settings">
+    <label>
+     Market
+     <select name="market">
+      <option>
+       BTC
+      </option>
+      <option>
+       ETH
+      </option>
+     </select>
+    </label>
+    <label>
+     Timeframe
+     <select name="interval">
+      <option value="1h">
+       1 hour
+      </option>
+      <option value="4h">
+       4 hours
+      </option>
+      <option value="1d">
+       Daily
+      </option>
+     </select>
+    </label>
+    <label>
+     Input
+     <select name="source">
+      <option value="demo">
+       Synthetic demo
+      </option>
+      <option value="cache">
+       Cached market data
+      </option>
+     </select>
+    </label>
+    <label>
+     Paper capital
+     <input max="1000000" min="100" name="capital" required="" step="100" type="number" value="5000"/>
+    </label>
+    <label>
+     Risk per entry
+     <select name="risk_fraction">
+      <option value="0.005">
+       0.5%
+      </option>
+      <option value="0.01">
+       1.0%
+      </option>
+      <option value="0.02">
+       2.0%
+      </option>
+     </select>
+    </label>
+    <button class="primary" id="run" type="submit">
+     Run research
+     <span>
+      ↗
+     </span>
+    </button>
+   </form>
+   <div class="notice" id="notice" role="status">
+    Synthetic demo · generated prices, not market forecasts. Demo runs cannot produce eligible trades. Capital is measured in quote units.
+   </div>
+   <section aria-label="Run summary" class="stats">
+    <article>
+     <p>
+      DATASET
+     </p>
+     <strong id="dataset">
+      —
+     </strong>
+     <small id="dataset-sub">
+      Waiting for a run
+     </small>
+    </article>
+    <article>
+     <p>
+      HYPOTHESES TESTED
+     </p>
+     <strong id="trial-count">
+      0
+      <span>
+       / 9
+      </span>
+     </strong>
+     <small>
+      Bounded search · registered templates
+     </small>
+    </article>
+    <article>
+     <p>
+      COMMITTEE APPROVALS
+     </p>
+     <strong id="approval-count">
+      0
+      <span>
+       / 4
+      </span>
+     </strong>
+     <small>
+      Three required · quant and risk mandatory
+     </small>
+    </article>
+    <article>
+     <p>
+      DECISION
+     </p>
+     <strong class="decision-stat" id="decision">
+      NOT RUN
+     </strong>
+     <small id="decision-sub">
+      Hard checks always have the final say
+     </small>
+    </article>
+   </section>
+   <section class="workspace-grid" id="workflow">
+    <article class="panel graph-panel">
+     <div class="panel-heading">
+      <div>
+       <p class="eyebrow">
+        01 / THE WORKFLOW
+       </p>
+       <h2>
+        Agent workflow
+       </h2>
+      </div>
+      <button aria-pressed="false" class="secondary small" id="depth">
+       Depth view
+      </button>
+     </div>
+     <div class="legend">
+      <span>
+       <i class="waiting">
+       </i>
+       Waiting
+      </span>
+      <span>
+       <i class="running">
+       </i>
+       Running
+      </span>
+      <span>
+       <i class="completed">
+       </i>
+       Complete
+      </span>
+      <span>
+       <i class="failed">
+       </i>
+       Failed
+      </span>
+     </div>
+     <div class="graph-viewport">
+      <div id="graph-plane">
+       <svg aria-hidden="true" class="edges" preserveaspectratio="none" viewbox="0 0 920 390">
+        <defs>
+         <marker id="arrow" markerheight="5" markerwidth="5" orient="auto" refx="9" refy="5" viewbox="0 0 10 10">
+          <path d="M 0 0 L 10 5 L 0 10 z">
+          </path>
+         </marker>
+        </defs>
+        <g id="edges">
+        </g>
+       </svg>
+       <div aria-label="Select an agent to inspect its work" id="nodes" role="group">
+       </div>
+      </div>
+     </div>
+     <div class="graph-foot">
+      <span id="run-status">
+       <i class="status-dot">
+       </i>
+       Ready to research
+      </span>
+      <span id="elapsed">
+       SELECT A NODE TO INSPECT
+      </span>
+     </div>
+    </article>
+    <article class="panel inspector">
+     <p class="eyebrow">
+      AGENT INSPECTOR
+     </p>
+     <h2 id="agent-name">
+      Data steward
+     </h2>
+     <span class="pill subdued" id="agent-status">
+      WAITING
+     </span>
+     <p id="agent-description">
+      Checks completed candles, missing bars, candle geometry and dataset identity.
+     </p>
+     <div class="inspector-divider">
+     </div>
+     <h3>
+      Current evidence
+     </h3>
+     <p class="muted" id="agent-summary">
+      Run an experiment to inspect this agent's actual work.
+     </p>
+     <pre id="agent-detail">No events yet.</pre>
+    </article>
+   </section>
+   <section class="results-grid" id="evidence">
+    <article class="panel">
+     <div class="panel-heading">
+      <div>
+       <p class="eyebrow">
+        02 / RESEARCH EVIDENCE
+       </p>
+       <h2>
+        Strategy trials
+       </h2>
+      </div>
+      <span class="pill subdued">
+       VALIDATION RANKING
+      </span>
+     </div>
+     <p class="section-note">
+      Three chronological windows select one candidate. Only that candidate sees the final test window.
+     </p>
+     <div class="table-scroll">
+      <table>
+       <thead>
+        <tr>
+         <th>
+          Strategy
+         </th>
+         <th>
+          Parameters
+         </th>
+         <th>
+          Score
+         </th>
+         <th>
+          Validation trades
+         </th>
+         <th>
+          Selection
+         </th>
+        </tr>
+       </thead>
+       <tbody id="trials">
+        <tr>
+         <td class="empty" colspan="5">
+          Your tested hypotheses will appear here.
+         </td>
+        </tr>
+       </tbody>
+      </table>
+     </div>
+     <p class="table-caption">
+      Score = mean validation Sharpe + 2 × mean drawdown. It is a ranking rule, not a probability of profit.
+     </p>
+    </article>
+    <article class="panel proposal">
+     <p class="eyebrow">
+      03 / THE DECISION
+     </p>
+     <h2>
+      Trade proposal
+     </h2>
+     <span class="proposal-state" id="proposal-status">
+      WAITING FOR EVIDENCE
+     </span>
+     <p class="muted" id="proposal-description">
+      The committee can approve a thesis. It cannot override missing data or failed risk checks.
+     </p>
+     <div class="check-list" id="checks">
+     </div>
+     <div class="level-grid" id="levels">
+     </div>
+     <p class="table-caption" id="proposal-note">
+      Levels and sizes remain blank until an actual run completes.
+     </p>
+    </article>
+   </section>
+   <section class="panel committee">
+    <div class="panel-heading">
+     <div>
+      <p class="eyebrow">
+       04 / INDEPENDENT JUDGMENT
+      </p>
+      <h2>
+       The committee
+      </h2>
+     </div>
+     <span class="muted">
+      Reviews run concurrently before seeing peer verdicts
+     </span>
+    </div>
+    <div class="review-grid" id="reviews">
+    </div>
+   </section>
+   <section class="results-grid" id="ledger">
+    <article class="panel">
+     <div class="panel-heading">
+      <div>
+       <p class="eyebrow">
+        05 / PAPER OUTCOMES
+       </p>
+       <h2>
+        Historical paper equity
+       </h2>
+      </div>
+      <span class="pill subdued">
+       SPOT · USDT
+      </span>
+     </div>
+     <canvas aria-label="Paper equity chart; measured metrics are shown below" height="220" id="equity" role="img">
+     </canvas>
+     <div class="equity-metrics" id="equity-metrics">
+      <span>
+       Net return
+       <b>
+        —
+       </b>
+      </span>
+      <span>
+       Drawdown
+       <b>
+        —
+       </b>
+      </span>
+      <span>
+       Trading fees
+       <b>
+        —
+       </b>
+      </span>
+     </div>
+     <p class="table-caption">
+      Next-open fills, adverse slippage and stop exits. Each research run starts a separate historical book.
+     </p>
+    </article>
+    <article class="panel">
+     <div class="panel-heading">
+      <div>
+       <p class="eyebrow">
+        RECONCILED TRADE LEDGER
+       </p>
+       <h2>
+        Paper fills
+       </h2>
+      </div>
+      <span class="pill subdued" id="ledger-status">
+       NOT RUN
+      </span>
+     </div>
+     <div class="table-scroll trades-scroll">
+      <table>
+       <thead>
+        <tr>
+         <th>
+          Entry
+         </th>
+         <th>
+          Exit
+         </th>
+         <th>
+          Net PnL
+         </th>
+         <th>
+          Reason
+         </th>
+        </tr>
+       </thead>
+       <tbody id="trades">
+        <tr>
+         <td class="empty" colspan="4">
+          No paper fills yet.
+         </td>
+        </tr>
+       </tbody>
+      </table>
+     </div>
+     <p class="table-caption">
+      Most recent 100 completed replay trades. No broker account is connected.
+     </p>
+    </article>
+   </section>
+   <section class="panel" id="activity">
+    <div class="panel-heading">
+     <div>
+      <p class="eyebrow">
+       06 / OBSERVABILITY
+      </p>
+      <h2>
+       Activity stream
+      </h2>
+     </div>
+     <span class="pill subdued">
+      SAVED TO SQLITE
+     </span>
+    </div>
+    <ol id="timeline">
+     <li class="muted empty">
+      Actual agent events will appear here, in order.
+     </li>
+    </ol>
+   </section>
+   <footer>
+    <span>
+     aylintrade / Quant Agent Studio
+    </span>
+    <span>
+     Local paper research only.
+    </span>
+   </footer>
+  </main>
+ </body>
+</html>

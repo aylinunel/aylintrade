@@ -4,6 +4,7 @@ from . import (  # noqa: F401  (imported for registration side effects)
     bollinger_w,
     buy_and_hold,
     dual_thrust,
+    ema_macd,
     heikin_ashi,
     london_breakout,
     macd,

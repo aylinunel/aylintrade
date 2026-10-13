@@ -106,12 +106,11 @@ def test_engle_granger_detects_cointegration(cointegrated_pair) -> None:
 def test_engle_granger_false_positive_rate_is_bounded() -> None:
     """Independent random walks should rarely look cointegrated.
 
-    The original method applies ordinary ADF p-values to regression residuals, which is
-    optimistic (proper Engle-Granger critical values are stricter), so the observed rate is
-    above the nominal 5%. This test pins it so a change in behaviour is noticed.
+    Correct residual critical values should keep the original optimistic false-positive
+    rate down. A 40-case deterministic sample bounds regression behavior, not test size.
     """
     hits = 0
     for seed in range(40):
         walks = np.cumsum(np.random.default_rng(seed).normal(size=(2, 400)), axis=1) + 100
         hits += engle_granger(walks[0], walks[1])[0]
-    assert hits / 40 < 0.3
+    assert hits / 40 < 0.15

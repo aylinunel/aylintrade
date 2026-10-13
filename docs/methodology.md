@@ -41,13 +41,13 @@ A strategy that reads tomorrow's data fails both tests. Any new strategy registe
 
 ## Known limitations
 
-* **Pair trading's cointegration test is optimistic.** Like the original, it applies ordinary
-  ADF p-values to regression residuals. About 18% of independent random walks pass at the nominal
-  5% level (pinned in `tests/test_strategies.py`). Proper Engle-Granger critical values
-  (`statsmodels.tsa.stattools.coint`) would be stricter.
+* **Pair trading uses Engle-Granger inference and fitted hedge quantities.** Gross exposure is
+  normalized to one. Equal dollar weights have been replaced; this does not prove market
+  neutrality. Pair fills still use the legacy research engine and exclude funding/borrow.
 * **Futures history is short** (about one year) and uses front-month data without roll
   adjustment.
 * **Shooting Star needs a gap up**, which 24/7 crypto rarely has, so it almost never trades there.
 * Daily and hourly bars cannot show the order of events inside a bar; where it matters, the
   pessimistic order is assumed.
 * No slippage model beyond the fixed cost, and no capacity or market-impact limits.
+
