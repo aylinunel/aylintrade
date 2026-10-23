@@ -1,5 +1,11 @@
 # aylintrade
 
+Project status: `main` contains the local Quant Agent Studio. The open trend rebuild in
+[PR #2](https://github.com/aylinunel/aylintrade/pull/2) is a separate, conflicting proposal,
+including the macro/hourly governance from merged PR #3. See the
+[status reconciliation and local evidence](docs/project-status.md) before treating either
+workflow as deployed or production-validated.
+
 ## Quant Agent Studio
 
 An observable research workflow with bounded strategy discovery, chronological validation,
@@ -174,7 +180,7 @@ Step-by-step examples are in [docs/extending.md](docs/extending.md).
 ```bash
 pip install -e ".[dev]"
 make lint      # ruff + mypy
-make test      # 66 offline tests, ~90% coverage
+make test      # offline suite, including studio and request-boundary checks
 ```
 
 CI runs lint, types and tests on Python 3.11–3.13 for every push and pull request.
